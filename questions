@@ -1,0 +1,70 @@
+Questions
+
+1. Consider the thread created in start_listener. How many threads with this functionality should be running on the server at any given time?
+
+Just 1 thread. The listener thread is the thread on the server responsible for waiting for and then connecting all clients to the server. 
+the start_listener function creates 1 thread which uses the function listener as its routine. In the listener function, a socket is created, bound to a 
+memory address, and then set to listen (using the listen() function) for incoming connections. It may recieve up to 100 connections, 
+as specified in line 54. Whenever a client connects, the thread creates a new socket for that client via the accept() function, and then 
+continues to listen for more incoming connections (by virtue of it being in a while loop).
+
+2. In the listener function, what do each of the following fields of the sockaddr_in struct represent: sin_family, sin_port, and sin_addr.s_addr?
+
+- sin_family is the address family that the socket can communicate with. In our case, we set this value to AF_INET, which means our socket can 
+communicate with IPv4 addresses (regular internet addresses).
+- sin_port specifies the port number to which the socket is listening on.
+- sin_addr.s_addr is the IP address of that the socket.
+
+3. What is the purpose of each of the following function calls in listener: socket, bind, listen, and accept? You should explain what each call does and what the effect would be if it were not called.
+
+- socket(int domain, int type, int protocol) creates an unbound socket used to connect to a network. If not called, our server and clients would not even be able to connect to each other, and would not be able to communicate at all.
+    arguments
+        - domain specifies the communication domain in which the socket is created
+        - type is the type of socket that is created
+        - protocol is the protocol of the socket
+    returns - file descriptor of the socket
+
+- bind(int socket, const struct sockaddr *address, socklen_t address_len) binds a socket to space in memory. Socket() alone does
+create space in memory for the socket. This is why we need bind - to bind the socket to an actual space in memory. Without it,
+the socket would only exist in the name space (not memory space) and would not be functional.
+    arguments
+        - socket is the file descriptor of the socket we wish to bind
+        - address is the pointer to memory of where we want to store the socket
+        - address_len is the sizeof(address)
+    returns - an int refering to the success or error of the function
+
+- listen(int sockfd, int backlog) makes the socket passed in a passive socket, meaning that the socket will be used to accept incoming client requests. We need to call this function to specify that this socket is passive and waiting for connections. If we
+don't, the listening socket wouldn't be set up properly, and it would not be clear that the listener socket is specifically for
+accepting clients, and the server would not be able to recieve connections.
+    Arguments 
+        - sockfd is the socket filedescriptor that listen will modify.
+        -  backlog specifies the number of connections able to be made to the socket.
+    returns - an int refering to the success or error of the function
+
+- accept(int sockfd, struct sockaddr *restrict addr, socklen_t *restrict addrlen) accepts the first client connection request in the pending-connections queue by creating a new socket (this new socket is not in listening mode). This is the call that allows us to acutally accept new clients - without it, no clients would be able to connect to the server
+    arguments 
+        - sockfd is the socket file descriptor that will accept the connection. 
+        - addr is the pointer to the sockaddr struct of the socket.
+        - addrlen is th length of the addr struct.
+    returns
+        - the file desciptor of the newly created socket
+
+4. Which protocol (TCP or UDP) is used for communication? Why is this protocol used? (Hint: see line 37 in comm.c)
+
+TCP is used because it is the more secure protocol (less of chance of data loss). UDP is faster but does not check
+if data was properly recieved.
+
+5. Describe what comm_serve does. How are the response and command parameters used? What would happen if the stream pointed to by cxstr were closed?
+
+Comm_serve is called by the server for each client. It attempts to put a response about the client's most recent command (first if statement block) to the clients stdout, and then waits and then gets the client's next command (second if statement) from the client's stdin. 
+
+Comm_serve also error checks these 2 processes by checking if clients have terminated. If the client has terminated i.e the file stream pointed to by cxstr is closed, it returns a -1 and prints out in the server that the client has terminated.
+
+6. Describe, in detail, what happens during each iteration of the while loop in the listener function. Be sure to include explanations of all significant function calls.
+
+1) a socket, socket address, and socket address length variables are defined. csock is assigned to an actual value later if a client connects.
+2) the socket waits for a client connection using accept() function, using the listening socket and assigning the new socket to csock, and the client_addr struct and the client_len to csock as well if a connection is made. Error checking is also done
+3) Once the connection is established the function prints out a message specifying the client IP address and port number
+4) fdopen is called on csock - this function associates the stream cxstr with the file desciptor of csock (i.e STDIN and STDOUT of each client). "w+" refers to the mode of fdopen, and it means the socket is open for both writing and reading. Error checking is done.
+5) server is then run with cxstr as its file stream
+
